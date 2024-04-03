@@ -1,56 +1,46 @@
 <div id="watch-example">
-<center>  
-
-    <i v-if='show' class="fa fa-question" style="font-size: 90px;" data-pack="social" data-tags="code, mobile, js, angularjs, ionic" @click='getAnswer_'></i>
-    <i v-else class="fa fa-refresh" style="font-size: 90px;" data-pack="social" data-tags="code, mobile, js, angularjs, ionic"></i>
-
-    <p v-if='show'><h1>{{ answer }}</h1></p>
-    <img v-if='answer' :src="src" @load='show = true'>
-</center>
+    <center>
+        <div>
+            <input type="text" v-model="question" placeholder="Input" style="font-size: 24px;">
+            <p style="font-size: 24px;">{{ modifiedString }}</p>
+        </div>
+    </center>
 </div>
-<link href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet" integrity="sha384-wvfXpqpZZVQGK6TAh5PVlGOfQNHSoD2xbE+QkPxCAFlNEevoEH3Sl0sibVcOQVnN" crossorigin="anonymous">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/vue/2.2.1/vue.min.js"></script>
-    <script src="https://unpkg.com/axios@0.12.0/dist/axios.min.js"></script>
-    <script src="https://unpkg.com/lodash@4.13.1/lodash.min.js"></script>
-    <link rel="shortcut icon" type="image/x-icon" href="favicon.ico">
-    <script>
-      var watchExampleVM = new Vue({
-  el: '#watch-example',
-  data: {
-    question: '',
-    answer: '',
-    src: '',
-    show: true
-  }, 
-  methods: {
-    cl: function(){
-      alert(12)
-    },
-    // _.debounce — это функция из lodash, позволяющая ограничить
-    // то, насколько часто может выполняться определённая операция.
-    // В данном случае, мы хотим ограничить частоту обращений к yesno.wtf/api,
-    // дожидаясь завершения печати вопроса перед тем как послать ajax-запрос.
-    // Чтобы узнать больше о функции _.debounce (и её родственнице _.throttle),
-    // см. документацию: https://lodash.com/docs#debounce   
-    getAnswer_: _.debounce(
-      function () {                
-        var vm = this
-        vm.show = false
-        vm.src = ''
-        axios.get('https://yesno.wtf/api')
-          .then(function (response) {
-            vm.answer = ( _.capitalize(response.data.answer) === 'Yes') ? 'Да': 'Нет' 
-            vm.src = _.capitalize(response.data.image)
-            console.log(vm.answer)
-           // vm.show = true
-          })
-          .catch(function (error) {
-            vm.answer = 'Ошибка! Не могу связаться с API. ' + error
-          })
-      },
-      // Это число миллисекунд, которое мы ждем, после того как пользователь прекратил печатать:
-      500
-    )
-  }
-})
-    </script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/vue/2.2.1/vue.min.js"></script>
+<script>
+    var watchExampleVM = new Vue({
+        el: '#watch-example',
+        data: {
+            question: '',
+        },
+        computed: {
+            modifiedString() {
+                // Замена текста, обернутого в фигурные скобки, на .*
+                return 'log_type:nginx AND verb:GET AND request:' + createNginxLogQuery(this.question);
+            }
+        }
+    });
+
+    function createNginxLogQuery(input) {
+        // Разбиваем исходную строку на части
+        const parts = input.split('/');
+
+        // Начинаем строку запроса с /.*
+        let query = '/.*';
+
+        // Проходим по каждой части URL
+        for (let i = 1; i < parts.length; i++) {
+            // Заменяем {placeHolder} на .*
+            let part = parts[i].replace(/\{.*?\}/g, '.*');
+
+            // Добавляем часть к запросу, заменяя / на \/
+            query += '\\/' + part;
+        }
+
+        // Добавляем .*/ в конце запроса
+        query += '.*/';
+
+        return query;
+    }
+</script>

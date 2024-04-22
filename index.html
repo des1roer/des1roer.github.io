@@ -1,8 +1,10 @@
 <div id="watch-example">
     <center>
         <div>
-            <input type="text" v-model="question" placeholder="Input" style="font-size: 24px;" size="50">
+            <input type="text" v-model="question" placeholder="Request" style="font-size: 24px;" size="50">
             <p style="font-size: 24px;">{{ modifiedString }}</p>
+            <input type="text" v-model="consumer" placeholder="Consumer" style="font-size: 24px;" size="50">
+            <p style="font-size: 24px;">{{ modifiedStringConsumer }}</p>
         </div>
     </center>
 </div>
@@ -13,11 +15,15 @@
         el: '#watch-example',
         data: {
             question: '',
+            consumer: '',
         },
         computed: {
             modifiedString() {
                 // Замена текста, обернутого в фигурные скобки, на .*
                 return 'log_type:nginx AND verb:GET AND request:' + createNginxLogQuery(this.question);
+            },
+            modifiedStringConsumer() {
+                return 'source: /supervisor-events-api-ixc.*/ AND message:/.*| (start|done).*/ AND ctxt_class:"' + addBackslashes(this.consumer) + '"';
             }
         }
     });
@@ -42,5 +48,12 @@
         query += '.*/';
 
         return query;
+    }
+
+    function addBackslashes(input) {
+        let string = input.replace(/^\\/, '');
+        // Используем регулярное выражение /\\/g для поиска всех вхождений обратного слеша
+        // и заменяем их на двойной обратный слеш \\
+        return string.replace(/\\/g, '\\\\');
     }
 </script>

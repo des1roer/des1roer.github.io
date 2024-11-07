@@ -23,7 +23,7 @@
                 return 'log_type:nginx AND verb:GET AND request:' + createNginxLogQuery(this.question);
             },
             modifiedStringConsumer() {
-                return 'source: /supervisor-events-api-ixc.*/ AND message:/.*| (start|done).*/ AND ctxt_class:"' + addBackslashes(this.consumer) + '"';
+                return 'source: /supervisor-events-api-ixc.*/ AND message:/.*| (start|done).*/ AND ctxt_class:/.*' + addBackslashes(this.consumer) + '.*/';
             }
         }
     });

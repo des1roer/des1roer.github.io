@@ -1,21 +1,32 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Обновление ссылки JB</title>
+</head>
+
 <div id="watch-example">
-    <center>
+    <div style="text-align: center;">
         <div>
             <input type="text" v-model="question" placeholder="Request" style="font-size: 24px;" size="50">
             <p style="font-size: 24px;">{{ modifiedString }}</p>
             <input type="text" v-model="consumer" placeholder="Consumer" style="font-size: 24px;" size="50">
             <p style="font-size: 24px;">{{ modifiedStringConsumer }}</p>
+            <input type="text" v-model="jb" placeholder="https://plugins.jetbrains.com/" style="font-size: 24px;" size="50">
+            <p style="font-size: 24px;" v-html="modifiedJb"></p>
         </div>
-    </center>
+    </div>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/vue/2.2.1/vue.min.js"></script>
+<script src="dist/vue.min.js"></script>
 <script>
-    var watchExampleVM = new Vue({
+    const watchExampleVM = new Vue({
         el: '#watch-example',
         data: {
             question: '',
             consumer: '',
+            jb: '',
         },
         computed: {
             modifiedString() {
@@ -24,9 +35,24 @@
             },
             modifiedStringConsumer() {
                 return 'source: /supervisor-events-api-ixc.*/ AND message:/.*| (start|done).*/ AND ctxt_class:/.*' + addBackslashes(this.consumer) + '.*/';
-            }
+            },
+            modifiedJb() {
+                return updateJbLink(this.jb);
+            },
         }
     });
+
+    function updateJbLink(input) {
+        // Замена домена в ссылке
+        const updatedUrl = input.replace('https://plugins.jetbrains.com', 'https://downloads.marketplace.jetbrains.com');
+
+        // Проверка, что ссылка корректна
+        if (input && updatedUrl !== input) {
+            return `<a href="${updatedUrl}">${updatedUrl}</a>`;
+        }
+
+        return 'Введите корректную ссылку с https://plugins.jetbrains.com';
+    }
 
     function createNginxLogQuery(input) {
         // Разбиваем исходную строку на части

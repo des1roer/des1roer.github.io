@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Обновление ссылки JB</title>
 </head>
+<body>
 
 <div id="watch-example">
     <div style="text-align: center;">
@@ -14,7 +15,14 @@
             <input type="text" v-model="consumer" placeholder="Consumer" style="font-size: 24px;" size="50">
             <p style="font-size: 24px;">{{ modifiedStringConsumer }}</p>
             <input type="text" v-model="jb" placeholder="https://plugins.jetbrains.com/" style="font-size: 24px;" size="50">
-            <p style="font-size: 24px;" v-html="modifiedJb"></p>
+
+            <p style="font-size: 24px;" v-if="jbResult.type === 'download'">
+                <a :href="jbResult.url" target="_blank" rel="noopener noreferrer">{{ jbResult.url }}</a>
+            </p>
+            <p style="font-size: 24px;" v-else-if="jbResult.type === 'open-api'">
+                Откройте <a :href="jbResult.url" target="_blank" rel="noopener noreferrer">{{ jbResult.url }}</a>, скопируйте JSON и вставьте его в это поле
+            </p>
+            <p style="font-size: 24px;" v-else-if="jbResult.type === 'error'">{{ jbResult.message }}</p>
         </div>
     </div>
 </div>
@@ -36,43 +44,55 @@
             modifiedStringConsumer() {
                 return 'source: /supervisor-events-api-ixc.*/ AND message:/.*| (start|done).*/ AND ctxt_class:/.*' + addBackslashes(this.consumer) + '.*/';
             },
-            modifiedJb() {
-                return updateJbLink(this.jb);
+            jbResult() {
+                return resolveJbLink(this.jb);
             },
         }
     });
 
-    function updateJbLink(input) {
+    function resolveJbLink(input) {
         const text = input.trim();
         if (!text) {
-            return '';
+            return { type: 'empty' };
         }
 
         // Step 2: JSON from /api/updates/<updateId> pasted into the same field.
         if (text.startsWith('{')) {
-            let update;
-            try {
-                update = JSON.parse(text);
-            } catch (e) {
-                return 'Не удалось разобрать JSON — скопируйте ответ API целиком';
-            }
-            if (!update.file) {
-                return 'В JSON нет поля "file"';
-            }
-            const downloadUrl = 'https://downloads.marketplace.jetbrains.com/files/'
-                + String(update.file).split('/').map(encodeURIComponent).join('/');
-            return `<a href="${downloadUrl}">${downloadUrl}</a>`;
+            return resolveFromJson(text);
         }
 
         // Step 1: page URL (.../versions/<channel>/<updateId>) or any URL with ?updateId=<id>.
-        // The API has no CORS headers, so the user opens it and pastes the JSON back.
-        const match = text.match(/[?&]updateId=(\d+)/) || text.match(/\/versions\/[^/]+\/(\d+)/);
-        if (!match) {
-            return 'Введите ссылку с updateId, например https://plugins.jetbrains.com/plugin/26071-mcp-server/versions/stable/1185147';
+        return resolveFromUrl(text);
+    }
+
+    function resolveFromJson(text) {
+        let update;
+        try {
+            update = JSON.parse(text);
+        } catch (e) {
+            return { type: 'error', message: 'Не удалось разобрать JSON — скопируйте ответ API целиком' };
         }
 
-        const apiUrl = `https://plugins.jetbrains.com/api/updates/${match[1]}`;
-        return `Откройте <a href="${apiUrl}" target="_blank" rel="noopener noreferrer">${apiUrl}</a>, скопируйте JSON и вставьте его в это поле`;
+        if (!update.file) {
+            return { type: 'error', message: 'В JSON нет поля "file"' };
+        }
+
+        const url = 'https://downloads.marketplace.jetbrains.com/files/'
+            + String(update.file).split('/').map(encodeURIComponent).join('/');
+        return { type: 'download', url };
+    }
+
+    function resolveFromUrl(text) {
+        const match = text.match(/[?&]updateId=(\d+)/) || text.match(/\/versions\/[^/]+\/(\d+)/);
+        if (!match) {
+            return {
+                type: 'error',
+                message: 'Введите ссылку с updateId, например https://plugins.jetbrains.com/plugin/26071-mcp-server/versions/stable/1185147',
+            };
+        }
+
+        // The API has no CORS headers, so the user opens it and pastes the JSON back.
+        return { type: 'open-api', url: `https://plugins.jetbrains.com/api/updates/${match[1]}` };
     }
 
     function createNginxLogQuery(input) {
@@ -104,3 +124,5 @@
         return string.replace(/\\/g, '\\\\');
     }
 </script>
+</body>
+</html>

@@ -14,7 +14,6 @@
             <input type="text" v-model="consumer" placeholder="Consumer" style="font-size: 24px;" size="50">
             <p style="font-size: 24px;">{{ modifiedStringConsumer }}</p>
             <input type="text" v-model="jb" placeholder="https://plugins.jetbrains.com/" style="font-size: 24px;" size="50">
-            <input type="text" v-model="jbVersion" placeholder="263.6259.38" style="font-size: 24px;" size="50">
             <p style="font-size: 24px;" v-html="modifiedJb"></p>
         </div>
     </div>
@@ -28,7 +27,6 @@
             question: '',
             consumer: '',
             jb: '',
-            jbVersion: '',
         },
         computed: {
             modifiedString() {
@@ -39,29 +37,42 @@
                 return 'source: /supervisor-events-api-ixc.*/ AND message:/.*| (start|done).*/ AND ctxt_class:/.*' + addBackslashes(this.consumer) + '.*/';
             },
             modifiedJb() {
-                return updateJbLink(this.jb, this.jbVersion);
+                return updateJbLink(this.jb);
             },
         }
     });
 
-    function updateJbLink(pageUrl, version) {
-        // /plugin/<pluginId>-<slug>/versions/<channel>/<updateId>
-        const match = pageUrl.match(/\/plugin\/(\d+)-([^/]+)\/versions\/[^/]*\/(\d+)/);
-        const ver = version.trim();
+    function updateJbLink(input) {
+        const text = input.trim();
+        if (!text) {
+            return '';
+        }
 
+        // Step 2: JSON from /api/updates/<updateId> pasted into the same field.
+        if (text.startsWith('{')) {
+            let update;
+            try {
+                update = JSON.parse(text);
+            } catch (e) {
+                return 'Не удалось разобрать JSON — скопируйте ответ API целиком';
+            }
+            if (!update.file) {
+                return 'В JSON нет поля "file"';
+            }
+            const downloadUrl = 'https://downloads.marketplace.jetbrains.com/files/'
+                + String(update.file).split('/').map(encodeURIComponent).join('/');
+            return `<a href="${downloadUrl}">${downloadUrl}</a>`;
+        }
+
+        // Step 1: page URL (.../versions/<channel>/<updateId>) or any URL with ?updateId=<id>.
+        // The API has no CORS headers, so the user opens it and pastes the JSON back.
+        const match = text.match(/[?&]updateId=(\d+)/) || text.match(/\/versions\/[^/]+\/(\d+)/);
         if (!match) {
-            return 'Нужна ссылка на страницу версии, например https://plugins.jetbrains.com/plugin/26071-mcp-server/versions/stable/1185147'
-                + ' (в ссылке download?updateId=… нет pluginId и слага)';
+            return 'Введите ссылку с updateId, например https://plugins.jetbrains.com/plugin/26071-mcp-server/versions/stable/1185147';
         }
 
-        if (!ver) {
-            return 'Введите версию, например 263.6259.38';
-        }
-
-        // Naming is author-defined; "<slug without dashes>-plugin-<version>.zip" matches MCP Server 263.x.
-        const file = `${match[2].replace(/-/g, '')}-plugin-${ver}.zip`;
-        const downloadUrl = `https://downloads.marketplace.jetbrains.com/files/${match[1]}/${match[3]}/${encodeURIComponent(file)}`;
-        return `<a href="${downloadUrl}">${downloadUrl}</a>`;
+        const apiUrl = `https://plugins.jetbrains.com/api/updates/${match[1]}`;
+        return `Откройте <a href="${apiUrl}" target="_blank" rel="noopener noreferrer">${apiUrl}</a>, скопируйте JSON и вставьте его в это поле`;
     }
 
     function createNginxLogQuery(input) {

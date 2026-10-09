@@ -14,6 +14,7 @@
             <input type="text" v-model="consumer" placeholder="Consumer" style="font-size: 24px;" size="50">
             <p style="font-size: 24px;">{{ modifiedStringConsumer }}</p>
             <input type="text" v-model="jb" placeholder="https://plugins.jetbrains.com/" style="font-size: 24px;" size="50">
+            <input type="text" v-model="jbVersion" placeholder="263.6259.38" style="font-size: 24px;" size="50">
             <p style="font-size: 24px;" v-html="modifiedJb"></p>
         </div>
     </div>
@@ -27,6 +28,7 @@
             question: '',
             consumer: '',
             jb: '',
+            jbVersion: '',
         },
         computed: {
             modifiedString() {
@@ -37,21 +39,29 @@
                 return 'source: /supervisor-events-api-ixc.*/ AND message:/.*| (start|done).*/ AND ctxt_class:/.*' + addBackslashes(this.consumer) + '.*/';
             },
             modifiedJb() {
-                return updateJbLink(this.jb);
+                return updateJbLink(this.jb, this.jbVersion);
             },
         }
     });
 
-    function updateJbLink(input) {
-        // Замена домена в ссылке
-        const updatedUrl = input.replace('https://plugins.jetbrains.com', 'https://downloads.marketplace.jetbrains.com');
+    function updateJbLink(pageUrl, version) {
+        // /plugin/<pluginId>-<slug>/versions/<channel>/<updateId>
+        const match = pageUrl.match(/\/plugin\/(\d+)-([^/]+)\/versions\/[^/]*\/(\d+)/);
+        const ver = version.trim();
 
-        // Проверка, что ссылка корректна
-        if (input && updatedUrl !== input) {
-            return `<a href="${updatedUrl}">${updatedUrl}</a>`;
+        if (!match) {
+            return 'Нужна ссылка на страницу версии, например https://plugins.jetbrains.com/plugin/26071-mcp-server/versions/stable/1185147'
+                + ' (в ссылке download?updateId=… нет pluginId и слага)';
         }
 
-        return 'Введите корректную ссылку с https://plugins.jetbrains.com';
+        if (!ver) {
+            return 'Введите версию, например 263.6259.38';
+        }
+
+        // Naming is author-defined; "<slug without dashes>-plugin-<version>.zip" matches MCP Server 263.x.
+        const file = `${match[2].replace(/-/g, '')}-plugin-${ver}.zip`;
+        const downloadUrl = `https://downloads.marketplace.jetbrains.com/files/${match[1]}/${match[3]}/${encodeURIComponent(file)}`;
+        return `<a href="${downloadUrl}">${downloadUrl}</a>`;
     }
 
     function createNginxLogQuery(input) {

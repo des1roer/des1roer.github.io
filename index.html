@@ -23,6 +23,16 @@
                 Откройте <a :href="jbResult.url" target="_blank" rel="noopener noreferrer">{{ jbResult.url }}</a>, скопируйте JSON и вставьте его в это поле
             </p>
             <p style="font-size: 24px;" v-else-if="jbResult.type === 'error'">{{ jbResult.message }}</p>
+
+            <input type="text" v-model="jbExe" placeholder="https://download.jetbrains.com/go/goland-2026.2.3.exe" style="font-size: 24px;" size="50">
+
+            <p style="font-size: 24px;" v-if="jbExeResult.type === 'download'">
+                <a :href="jbExeResult.url" target="_blank" rel="noopener noreferrer">{{ jbExeResult.url }}</a>
+            </p>
+            <p style="font-size: 24px;" v-else-if="jbExeResult.type === 'open-header-check'">
+                Откройте <a :href="jbExeResult.url" target="_blank" rel="noopener noreferrer">ссылку на проверку заголовков</a>, скопируйте весь ответ и вставьте его в это поле
+            </p>
+            <p style="font-size: 24px;" v-else-if="jbExeResult.type === 'error'">{{ jbExeResult.message }}</p>
         </div>
     </div>
 </div>
@@ -35,6 +45,7 @@
             question: '',
             consumer: '',
             jb: '',
+            jbExe: '',
         },
         computed: {
             modifiedString() {
@@ -46,6 +57,9 @@
             },
             jbResult() {
                 return resolveJbLink(this.jb);
+            },
+            jbExeResult() {
+                return resolveExeLink(this.jbExe);
             },
         }
     });
@@ -93,6 +107,31 @@
 
         // The API has no CORS headers, so the user opens it and pastes the JSON back.
         return { type: 'open-api', url: `https://plugins.jetbrains.com/api/updates/${match[1]}` };
+    }
+
+    function resolveExeLink(input) {
+        const text = input.trim();
+        if (!text) {
+            return { type: 'empty' };
+        }
+
+        // Step 2: raw httpheaders response (or just the Location value) pasted back.
+        const locationMatch = text.match(/location:\s*(\S+)/i) || text.match(/(https:\/\/download-cdn\.jetbrains\.com\S*)/);
+        if (locationMatch) {
+            return { type: 'download', url: locationMatch[1] };
+        }
+
+        // Step 1: direct installer link. download.jetbrains.com is export-blocked for us,
+        // so a third-party header checker (not blocked) is used to read the redirect Location.
+        if (/^https?:\/\/download\.jetbrains\.com\//i.test(text)) {
+            const checkUrl = 'https://api.hackertarget.com/httpheaders/?q=' + encodeURIComponent(text);
+            return { type: 'open-header-check', url: checkUrl };
+        }
+
+        return {
+            type: 'error',
+            message: 'Введите прямую ссылку на установщик, например https://download.jetbrains.com/go/goland-2026.2.3.exe',
+        };
     }
 
     function createNginxLogQuery(input) {
